@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>收藏整理器 · 把你存过的链接排成一条能走完的路</title>
+<meta name="description" content="粘贴收藏夹链接，在浏览器本地去重、补缺口、排优先级：每条属于哪一步、还缺哪一步、先看哪个。不联网、不上传。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232b5a8c'/%3E%3Cpath d='M8 10h16M8 16h11M8 22h7' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --line:#e3e7ee; --line2:#ccd3de;
+    --tx:#1f2733; --tx2:#58637a; --tx3:#8b95a6;
+    --brand:#2b5a8c; --brandDk:#1f4370; --brandBg:#eaf1f9;
+    --video:#185fa5; --book:#3b6d11; --art:#854f0b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:14px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:26px 20px 70px}
+  a{color:var(--tx)}
+
+  /* 品牌头 */
+  .brand{display:flex;align-items:center;gap:11px;margin:0 0 16px}
+  .mark{flex:0 0 34px;height:34px;border-radius:9px;background:var(--brand);
+    display:flex;align-items:center;justify-content:center}
+  .brand .nm{font-size:16px;font-weight:600;letter-spacing:-.2px;line-height:1.25}
+  .brand .tg{font-size:11.5px;color:var(--tx3);line-height:1.25}
+
+  h1{font-size:20px;font-weight:600;margin:0 0 4px;letter-spacing:-.2px}
+  .sub{font-size:13px;color:var(--tx2);margin:0 0 20px;line-height:1.7}
+
+  /* 三件事 · 并列 */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 12px}
+  .trio .t{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .trio .th{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+  .trio .n{flex:0 0 20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;
+    font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center}
+  .trio h3{font-size:13.5px;font-weight:600;margin:0}
+  .trio p{margin:0;font-size:12.4px;color:var(--tx2);line-height:1.68}
+  @media (max-width:640px){ .trio{grid-template-columns:1fr} }
+
+  textarea{width:100%;min-height:150px;padding:12px 14px;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    border:1px solid var(--line2);border-radius:10px;background:#fff;color:var(--tx);resize:vertical}
+  textarea:focus{outline:none;border-color:var(--brand)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  button{padding:9px 18px;font-size:13.5px;border:1px solid var(--brand);border-radius:9px;
+    background:var(--brand);color:#fff;cursor:pointer;font-family:inherit}
+  button:hover{background:var(--brandDk);border-color:var(--brandDk)}
+  button.ghost{background:#fff;color:var(--tx);border-color:var(--line2)}
+  button.ghost:hover{background:#f3f5f8;border-color:var(--line2);color:var(--tx)}
+  button.mini{padding:4px 10px;font-size:12px;border-radius:7px;background:#fff;
+    color:var(--tx2);border-color:var(--line2)}
+  button.mini:hover{background:#f3f5f8;color:var(--tx2)}
+  .hint{font-size:12px;color:var(--tx3);margin:8px 0 0;line-height:1.7}
+  .glabel{font-size:12px;color:var(--tx3);margin:16px 0 6px}
+  .tabs2{display:flex;gap:6px;flex-wrap:wrap}
+  .tabs2 button{padding:6px 12px;font-size:12.5px;border:1px solid var(--line2);
+    border-radius:20px;background:#fff;color:var(--tx2);cursor:pointer}
+  .tabs2 button.on{background:var(--brandBg);border-color:var(--brand);color:var(--brandDk);font-weight:500}
+  .tabs2 button:hover{background:var(--brandBg);border-color:var(--brand);color:var(--brandDk)}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;margin:16px 0}
+  .panel h2{font-size:13.5px;font-weight:600;margin:0 0 10px}
+  .stats{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--tx2)}
+  .stats b{font-size:16px;font-weight:600;color:var(--tx);display:block}
+
+  .warn{background:#fff8e6;border:1px solid #f0d69a;border-radius:9px;
+    padding:10px 13px;font-size:12.6px;color:#7a5510;line-height:1.75;margin-top:10px}
+  .warn ul{margin:6px 0 0;padding-left:18px}
+  .warn li{margin-bottom:4px}
+  .gapbox{background:#f4f6fa;border:1px dashed var(--line2);border-radius:9px;
+    padding:11px 13px;font-size:12.6px;color:var(--tx2);line-height:1.75;margin-top:10px}
+  .gapbox b{color:var(--tx);font-weight:500}
+  .gapbox a{color:var(--video);text-decoration:none;border-bottom:1px solid #c9dcf0;margin-right:6px}
+  .gapbox a:hover{border-color:var(--video)}
+
+  ol{list-style:none;margin:0;padding:0}
+  li.step{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:13px 15px;margin-bottom:9px;display:flex;gap:13px;align-items:flex-start}
+  .num{flex:0 0 25px;height:25px;border-radius:50%;background:var(--bg);
+    border:1px solid var(--line2);color:var(--tx2);font-size:12px;
+    display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .body{flex:1;min-width:0}
+  .title{font-weight:500;font-size:14px;margin:4px 0 4px;line-height:1.5}
+  .title a{color:var(--tx);text-decoration:none;border-bottom:1px solid var(--line2)}
+  .title a:hover{border-color:var(--brand)}
+  .meta{font-size:12px;color:var(--tx3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .why{font-size:11.8px;color:var(--tx3);margin-top:5px;line-height:1.6}
+  .role{display:inline-block;font-size:11px;padding:2px 8px;border-radius:5px}
+  .role.orient{background:#faeeda;color:#854f0b}
+  .role.system{background:#eaf3de;color:#3b6d11}
+  .role.practice{background:#e6f1fb;color:#185fa5}
+  .role.deepen{background:#eee8fa;color:#5f3fa8}
+  .role.pitfall{background:#fcebeb;color:#a32d2d}
+  .role.unknown{background:#eef1f5;color:#5a6472}
+  .src{font-size:11px;padding:1px 7px;border-radius:4px;background:#eef1f5;color:var(--tx2)}
+  .dupe{background:#f4f6fa;border:1px dashed var(--line2);border-radius:8px;
+    padding:8px 12px;font-size:12.3px;color:var(--tx2);margin-bottom:9px}
+  .tools{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap}
+  input.min{width:62px;padding:3px 6px;font-size:12px;border:1px solid var(--line2);
+    border-radius:6px;background:#fff;color:var(--tx);font-family:inherit}
+  select.min{width:auto;padding:3px 6px;font-size:12px;border:1px solid var(--line2);
+    border-radius:6px;background:#fff;color:var(--tx);font-family:inherit}
+  input.min:focus,select.min:focus{outline:none;border-color:var(--brand)}
+  .empty{padding:26px 0;text-align:center;color:var(--tx3);font-size:13px}
+  .exportbox{margin-top:14px}
+  pre.out{background:#f4f6fa;border:1px solid var(--line);border-radius:9px;padding:12px;
+    font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;
+    max-height:280px;overflow:auto;color:var(--tx2)}
+  .foot{margin-top:30px;font-size:12px;color:var(--tx3);line-height:1.8;
+    border-top:1px solid var(--line);padding-top:14px}
+  details{margin-top:14px;border:1px solid var(--line);border-radius:11px;background:#fff;overflow:hidden}
+  details summary{cursor:pointer;padding:12px 16px;font-size:13.5px;font-weight:500;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details .bd{padding:0 16px 14px;font-size:12.8px;color:var(--tx2);line-height:1.8}
+  table{width:100%;border-collapse:collapse;font-size:12.6px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:500;color:var(--tx3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16M4 12h11M4 17h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="nm">收藏整理器</div>
+      <div class="tg">存进去容易，理出来难 —— 这一步我来</div>
+    </div>
+  </div>
+
+  <h1>把你收藏过的东西排成一条能走完的路</h1>
+  <p class="sub">粘贴 5–10 个链接（B站 / 知乎 / 微信 / 微信读书都行），它在你的浏览器里做三件事：</p>
+
+  <div class="trio">
+    <div class="t">
+      <div class="th"><span class="n">1</span><h3>去重</h3></div>
+      <p>同一个视频收藏两次、同一个系列的两集（P1 / P2、上 / 下），合并成一条，并列出被合并掉了哪些。</p>
+    </div>
+    <div class="t">
+      <div class="th"><span class="n">2</span><h3>补缺口</h3></div>
+      <p>没有入门就先补入门，没有实操就补实操。缺哪一步直接点名，并给出该去搜什么词。</p>
+    </div>
+    <div class="t">
+      <div class="th"><span class="n">3</span><h3>排优先级</h3></div>
+      <p>按认知顺序排，不是按收藏时间——先建立地图，再搭骨架，再动手，最后看别人踩过的坑。</p>
+    </div>
+  </div>
+
+  <p class="hint">链接不上传、不联网，整段解析就在你自己的浏览器里完成。</p>
+
+  <textarea id="raw" placeholder="每行粘一个链接，或者直接从收藏夹页面整段复制（标题 + 链接都带过来）。&#10;&#10;例：&#10;零基础Python入门教程 https://www.bilibili.com/video/BV1xx411c7mD&#10;https://www.bilibili.com/video/BV1xx411c7mD&#10;https://zhihu.com/question/12345678/answer/987654321"></textarea>
+  <p class="hint">支持的形式：纯链接、<code>标题 + 链接</code>、<code>标题换行链接</code>、整段带其它文字的复制内容（会自动把 URL 抠出来）。
+    B站的 <code>b23.tv</code> 短链识别得出来但展开不了（浏览器跨域限制），会单独标出来让你补。</p>
+
+  <div class="row">
+    <button id="go">整理成路径</button>
+    <button class="ghost" id="demo">填一份示例</button>
+    <button class="ghost" id="clear">清空</button>
+  </div>
+
+  <p class="glabel">你这次想达成什么（决定时间怎么分）</p>
+  <div class="tabs2" id="goals"></div>
+
+  <div id="out"></div>
+
+  <details>
+    <summary>它是怎么判的（规则全公开，你可以自己推翻）</summary>
+    <div class="bd">
+      <table>
+        <tr><th style="width:80px">环节</th><th>规则</th></tr>
+        <tr><td><b>去重</b></td><td>先按站内 ID 完全一致合并（B站 BV 号、知乎回答 ID、专栏 ID）；
+          再按标题近似合并——去掉标点空格和「（一）」「P1」「上」这类序号后，
+          一方包含另一方、或字符重合度超过 0.72，判为同一系列的不同集，保留一条并在下面列出被合并的。</td></tr>
+        <tr><td><b>角色</b></td><td>五个角色靠标题关键词命中，命中词会写在每条下面。一个词都没命中就标「待定」，你自己选。
+          <br>定向：入门/零基础/是什么/简介/概览/科普/速成<br>
+          体系：教程/全套/完整/系列/课程/从零到/系统<br>
+          实操：实战/项目/案例/手把手/跟着做/刷题/练<br>
+          深化：原理/底层/深入/进阶/源码/推导/数学<br>
+          避坑：坑/误区/避雷/常见错误/踩坑/复盘/血泪</td></tr>
+        <tr><td><b>排序</b></td><td>按认知顺序「定向 → 体系 → 实操 → 深化 → 避坑」，不是按收藏时间、也不是按热度。
+          选了「尽快做出东西」，实操会提到体系前面；选了「搞懂原理」，深化提前。</td></tr>
+        <tr><td><b>时长</b></td><td>粗估：B站带「合集/全套/系列/课程」按 240 分钟算，单集 25 分钟；知乎回答 8 分钟；微信文章 6 分钟；书 120 分钟。
+          每条都能改，改完总数跟着变。</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <div class="foot">
+    收藏整理器是纯静态单页，解析、去重、排序全部在本地完成，不联网、不上传、不存任何账号信息，也没有追踪脚本。<br>
+    上一次粘贴的内容会存在浏览器 localStorage 里，方便你回来接着改——换设备就没了。
+  </div>
+</div>
+
+<script>
+const GOALS = [
+  {key:'balanced', label:'按认知顺序走', desc:'定向 → 体系 → 实操 → 深化 → 避坑'},
+  {key:'hands_on', label:'尽快做出东西', desc:'实操提到体系前面，先动手再补骨架'},
+  {key:'deep',     label:'搞懂原理',     desc:'深化提前，动手退成验证'},
+  {key:'overview', label:'只想看全貌',   desc:'定向和体系优先，实操只留一条'},
+];
+let goal = 'balanced';
+
+const ROLES = {
+  orient:  {label:'定向', cls:'orient',  desc:'回答「这是什么、能干什么」，最短时间建立地图'},
+  system:  {label:'体系', cls:'system',  desc:'把零散知识连成骨架，这一步最花时间但省后面的时间'},
+  practice:{label:'实操', cls:'practice',desc:'跟着做一遍，把骨架变成自己的东西'},
+  deepen:  {label:'深化', cls:'deepen',  desc:'往原理里走，解决「会做但说不清为什么」'},
+  pitfall: {label:'避坑', cls:'pitfall', desc:'看别人踩过的坑，带着问题回去补'},
+  unknown: {label:'待定', cls:'unknown', desc:'标题里没有可判的词，需要你自己归一类'},
+};
+const ORDER = {
+  balanced:['orient','system','practice','deepen','pitfall','unknown'],
+  hands_on:['orient','practice','system','deepen','pitfall','unknown'],
+  deep:    ['orient','system','deepen','practice','pitfall','unknown'],
+  overview:['orient','system','practice','deepen','pitfall','unknown'],
+};
+const KW = [
+  ['orient',  ['入门','零基础','零基础学','是什么','是什么？','简介','概览','概述','科普','速成','一分钟','x分钟','初学者','小白','导论','introduction','概览篇','扫盲','一分钟看懂','guide']],
+  ['system',  ['教程','全套','完整版','完整','系列','课程','系统','从零','从入门到','体系','合集','讲义','教材','全集','全课程','lecture','course']],
+  ['practice',['实战','项目','案例','手把手','跟着做','做一遍','实操','练习','刷题','题库','真题','演练','demo','project','训练','作业','实验','worksheet']],
+  ['deepen',  ['原理','底层','深入','进阶','源码','推导','数学','为什么','证明','论文','高级','内核','本质','深入浅出','intuition','深入解析']],
+  ['pitfall', ['坑','误区','避雷','常见错误','踩坑','避坑','失败','经验','复盘','血泪','注意','别再','错误','后悔','忠告']],
+];
+
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function parseURL(u){
+  let host='', id=null, kind='link';
+  try{
+    const o = new URL(u); host = o.hostname.replace(/^www\./,'');
+    const p = o.pathname;
+    if(host.includes('bilibili.com') || host==='b23.tv'){
+      kind = 'video';
+      let m = p.match(/\/video\/(BV[0-9A-Za-z]+)/);
+      if(m) id = m[1];
+      else { m = p.match(/\/video\/av(\d+)/); if(m) id = 'av'+m[1]; }
+      if(host==='b23.tv'){ id = id || ('b23:'+p.replace(/\//g,'')); }
+      if(!id) id = 'bili:'+p.replace(/\//g,'_');
+    } else if(host.includes('zhihu.com')){
+      let m = p.match(/\/answer\/(\d+)/);
+      if(m){ id='zh_ans_'+m[1]; kind='article'; }
+      else { m = p.match(/\/p\/(\d+)/); if(m){ id='zh_col_'+m[1]; kind='article'; }
+        else { m = p.match(/\/question\/(\d+)/); if(m){ id='zh_q_'+m[1]; kind='article'; }
+          else id='zh:'+p.replace(/\//g,'_'); } }
+    } else if(host.includes('mp.weixin.qq.com')){
+      kind='article'; id='wx:'+(o.searchParams.get('mid')||p.replace(/\//g,'_'));
+    } else if(host.includes('weread.qq.com')){
+      kind='book'; id='wr:'+p.replace(/\//g,'_');
+    } else if(host.includes('youtube.com')||host==='youtu.be'){
+      kind='video'; id='yt:'+(o.searchParams.get('v')||p.replace(/\//g,'_'));
+    } else {
+      id = 'url:'+u.replace(/^https?:\/\//,'').slice(0,80);
+    }
+  }catch(e){ id='bad:'+u.slice(0,60); }
+  const SRCNAME = {video:'B站 / 视频', article:'文章', book:'书', link:'网页'};
+  return {host, id, kind, src: SRCNAME[kind]||'网页', isShort: host==='b23.tv'};
+}
+
+function estimate(item){
+  const t = (item.title||'').toLowerCase();
+  if(item.kind==='video'){
+    if(/合集|全套|系列|完整|全课程|全集|从零|从入门到/.test(t)) return 240;
+    if(/课程|教程|lecture|course/.test(t)) return 150;
+    return 25;
+  }
+  if(item.kind==='book') return 120;
+  if(item.kind==='article') return 8;
+  return 10;
+}
+
+function classify(title){
+  const t = (title||'').toLowerCase();
+  const hits = {};
+  KW.forEach(([role, words])=>{
+    words.forEach(w=>{ if(t.includes(w.toLowerCase())) (hits[role]=hits[role]||[]).push(w); });
+  });
+  const keys = Object.keys(hits);
+  if(!keys.length) return {role:'unknown', why:''};
+  // 一个标题命中多个角色时，取优先级更高的那个：体系 > 实操 > 深化 > 避坑 > 定向。
+  // 因为「零基础 + 全套教程」这种组合，它实际承担的是体系那一步，不是定向。
+  // 下面按「低优先级在前」排列，最后命中的胜出。
+  const pref = ['orient','pitfall','deepen','practice','system'];
+  let pick = keys[0];
+  pref.forEach(r=>{ if(keys.includes(r)) pick = r; });
+  return {role:pick, why:'命中：' + hits[pick].join('、') + (keys.length>1 ? '（同时命中 ' + keys.map(k=>ROLES[k].label).join('/') + '，取' + ROLES[pick].label + '）' : '')};
+}
+
+function norm(t){
+  return (t||'').toLowerCase()
+    .replace(/[\s\u3000]/g,'')
+    .replace(/[（）()【】\[\]—\-_·、，,。.！!？?:：""''「」《》]/g,'')
+    .replace(/(p|第)?\d+\s*(集|期|讲|章|节|话|p|part)?$/,'')
+    .replace(/(上|中|下|一|二|三|四|五|六|七|八|九|十)$/,'');
+}
+function jac(a,b){
+  if(!a.length||!b.length) return 0;
+  const A=new Set(a), B=new Set(b); let inter=0;
+  A.forEach(c=>{ if(B.has(c)) inter++; });
+  return inter/(A.size+B.size-inter);
+}
+
+function parseInput(text){
+  const lines = text.split(/\r?\n/);
+  const items = [];
+  let pendingTitle = '';
+  lines.forEach(line=>{
+    const urls = line.match(/https?:\/\/[^\s"'<>）)\]，、]+/g) || [];
+    if(!urls.length){ if(line.trim()) pendingTitle = line.trim(); return; }
+    urls.forEach(u=>{
+      u = u.replace(/[，。、）)\]]+$/,'');
+      let title = line.slice(0, line.indexOf(u)).replace(/[\-—|｜·\s]+$/g,'').trim();
+      if(!title) title = pendingTitle;
+      pendingTitle = '';
+      const meta = parseURL(u);
+      items.push({url:u, title:title || '(没抓到标题)', ...meta});
+    });
+  });
+  return items;
+}
+
+let ITEMS = [];
+
+function analyse(raw){
+  const parsed = parseInput(raw);
+  const byId = new Map(), merged = [];
+  parsed.forEach(it=>{
+    if(byId.has(it.id)){
+      byId.get(it.id).dupes.push(it); return;
+    }
+    it.dupes = [];
+    byId.set(it.id, it); merged.push(it);
+  });
+  // 标题近似：同一系列的不同集
+  const keep = [];
+  merged.forEach(it=>{
+    const n = norm(it.title);
+    const hit = keep.find(k=>{
+      const m = norm(k.title);
+      if(!n.length || !m.length) return false;
+      return n===m || n.includes(m) || m.includes(n) || jac(n,m) > 0.72;
+    });
+    if(hit){ hit.dupes.push(it); }
+    else keep.push(it);
+  });
+  keep.forEach(it=>{
+    const c = classify(it.title);
+    it.role = c.role; it.why = c.why;
+    it.mins = estimate(it);
+  });
+  ITEMS = keep;
+  render();
+}
+
+function sortedItems(){
+  const ord = ORDER[goal];
+  return ITEMS.slice().sort((a,b)=>{
+    const ia = ord.indexOf(a.role), ib = ord.indexOf(b.role);
+    if(ia!==ib) return ia-ib;
+    return b.mins - a.mins;
+  });
+}
+
+function render(){
+  const el = document.getElementById('out');
+  if(!ITEMS.length){ el.innerHTML=''; return; }
+  const list = sortedItems();
+  const total = list.reduce((s,i)=>s+(+i.mins||0),0);
+  const nDupe = ITEMS.reduce((s,i)=>s+i.dupes.length,0);
+  const covered = new Set(list.map(i=>i.role));
+  const missing = ['orient','system','practice','deepen','pitfall'].filter(r=>!covered.has(r));
+  const unknown = list.filter(i=>i.role==='unknown');
+
+  let h = '';
+  h += '<div class="panel"><h2>整理结果</h2><div class="stats">' +
+    '<div><b>'+ITEMS.length+'</b>条留下</div>' +
+    (nDupe ? '<div><b>'+nDupe+'</b>条被合并（重复 / 同系列）</div>' : '<div><b>0</b>条重复</div>') +
+    '<div><b>'+Math.round(total/60*10)/10+' 小时</b>粗估总时长</div>' +
+    '<div><b>'+(5-missing.length)+' / 5</b>环节有内容</div>' +
+    '</div>';
+
+  const dupesHtml = ITEMS.filter(i=>i.dupes.length).map(i=>
+    '<div class="dupe">合并进「'+esc(i.title)+'」：'+ i.dupes.map(d=>esc(d.title.length>28?d.title.slice(0,28)+'…':d.title)).join('、') +'</div>'
+  ).join('');
+  if(dupesHtml) h += '<div style="margin-top:12px">' + dupesHtml + '</div>';
+
+  if(missing.length){
+    h += '<div class="gapbox"><b>缺口：' + missing.map(r=>ROLES[r].label).join('、') + '</b><br>' +
+      '你收藏的东西里没有这一步，直接开看容易卡住。建议补一条（点了直接去搜）：<br>' +
+      missing.map(r=>{
+        const q = {orient:'入门 概览',system:'系统 教程 全套',practice:'实战 项目 案例',deepen:'原理 深入',pitfall:'常见误区 踩坑'}[r];
+        return '<div style="margin-top:6px"><b>'+ROLES[r].label+'</b>（'+esc(ROLES[r].desc)+'）· 搜：' +
+          '<a href="https://search.bilibili.com/all?keyword='+encodeURIComponent(q)+'" target="_blank" rel="noopener">B站</a>'+
+          '<a href="https://www.zhihu.com/search?q='+encodeURIComponent(q)+'" target="_blank" rel="noopener">知乎</a></div>';
+      }).join('') + '</div>';
+  } else {
+    h += '<div class="gapbox">五个环节都有东西，这条收藏能走完。看的时候别忘了顺序——先' +
+      ROLES[ORDER[goal][0]].label + '再' + ROLES[ORDER[goal][1]].label + '。</div>';
+  }
+  if(unknown.length){
+    h += '<div class="warn">有 '+unknown.length+' 条标题里没有可判的词，先按「待定」排在最后。' +
+      '你可以在每条下面自己选它属于哪一步——这一步的判断只能靠标题，标题写得太含糊它就判不出来。</div>';
+  }
+  const shorts = ITEMS.filter(i=>i.isShort);
+  if(shorts.length){
+    h += '<div class="warn">有 '+shorts.length+' 条是 b23.tv 短链，浏览器跨域限制导致它没法自动展开成 BV 号，' +
+      '所以这几条没法判重、也没法判是不是同一系列。要精确处理就把它们换成完整链接（点进去地址栏复制）。</div>';
+  }
+  h += '</div>';
+
+  h += '<ol>';
+  list.forEach((it,idx)=>{
+    const r = ROLES[it.role];
+    h += '<li class="step"><div class="num">'+(idx+1)+'</div><div class="body">' +
+      '<div><span class="role '+r.cls+'">'+r.label+'</span><span class="src">'+esc(it.src)+'</span></div>' +
+      '<div class="title"><a href="'+esc(it.url)+'" target="_blank" rel="noopener">'+esc(it.title)+'</a></div>' +
+      '<div class="meta"><span>粗估 '+it.mins+' 分钟</span><span>·</span><span>'+esc(ROLES[it.role].desc)+'</span></div>' +
+      (it.why ? '<div class="why">'+esc(it.why)+'</div>' : '<div class="why">没命中关键词 → 待定</div>') +
+      '<div class="tools">' +
+        '<button class="mini" data-act="del" data-i="'+idx+'">删掉</button>' +
+        '<input class="min" type="number" min="0" value="'+it.mins+'" data-act="mins" data-i="'+idx+'"> 分钟' +
+        '<select class="min" data-act="role" data-i="'+idx+'">' +
+          Object.keys(ROLES).map(k=>'<option value="'+k+'"'+(k===it.role?' selected':'')+'>'+ROLES[k].label+'</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '</div></li>';
+  });
+  h += '</ol>';
+
+  const txt = list.map((it,i)=>(i+1)+'. ['+ROLES[it.role].label+'] '+it.title+' · '+it.mins+'分钟\n   '+it.url).join('\n');
+  h += '<div class="exportbox">' +
+    '<div class="row"><button class="ghost" id="copy">复制清单</button>' +
+    '<button class="ghost" id="dl">下载 JSON</button>' +
+    '<button class="ghost" id="ics">生成日历文件(.ics)</button></div>' +
+    '<pre class="out" id="txt" style="display:none">'+esc(txt)+'</pre></div>';
+
+  el.innerHTML = h;
+
+  document.getElementById('copy').onclick = ()=>{
+    const p = document.getElementById('txt');
+    p.style.display='block';
+    navigator.clipboard && navigator.clipboard.writeText(txt);
+    document.getElementById('copy').textContent='已复制 ✓';
+    setTimeout(()=>document.getElementById('copy').textContent='复制清单',1500);
+  };
+  document.getElementById('dl').onclick = ()=>{
+    const blob = new Blob([JSON.stringify(list,null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download='saved-path.json'; a.click();
+  };
+  document.getElementById('ics').onclick = ()=>{
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//saved-sorter//CN'];
+    let d = new Date(); d.setHours(20,0,0,0);
+    const pad = n=>String(n).padStart(2,'0');
+    const fmt = dt=>dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(dt.getHours())+pad(dt.getMinutes())+'00';
+    list.forEach(it=>{
+      const end = new Date(d.getTime()+ (it.mins||30)*60000);
+      lines.push('BEGIN:VEVENT','UID:'+it.id+'@saved-sorter',
+        'DTSTART:'+fmt(d),'DTEND:'+fmt(end),
+        'SUMMARY:['+ROLES[it.role].label+'] '+it.title.replace(/([,;\\])/g,'\\$1'),
+        'DESCRIPTION:'+it.url,'END:VEVENT');
+      d = new Date(end.getTime()+ 10*60000);
+    });
+    lines.push('END:VCALENDAR');
+    const blob = new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='saved-path.ics'; a.click();
+  };
+  el.querySelectorAll('[data-act]').forEach(node=>{
+    node.onchange = node.onclick = null;
+    const act = node.dataset.act, i = +node.dataset.i, it = list[i];
+    if(act==='del') node.onclick = ()=>{ ITEMS = ITEMS.filter(x=>x!==it); render(); };
+    if(act==='mins') node.onchange = ()=>{ it.mins = +node.value||0; render(); };
+    if(act==='role') node.onchange = ()=>{ it.role = node.value; it.why='你手动指定'; render(); };
+  });
+}
+
+// 目标切换
+const gEl = document.getElementById('goals');
+GOALS.forEach(g=>{
+  const b = document.createElement('button');
+  b.textContent = g.label; b.title = g.desc;
+  b.className = g.key===goal ? 'on' : '';
+  b.onclick = ()=>{ goal = g.key; [...gEl.children].forEach(x=>x.className=''); b.className='on'; if(ITEMS.length) render(); };
+  gEl.appendChild(b);
+});
+
+const KEY = 'saved_sorter_raw';
+document.getElementById('go').onclick = ()=>{
+  const v = document.getElementById('raw').value.trim();
+  if(!v){ document.getElementById('out').innerHTML='<div class="empty">先粘贴点链接</div>'; return; }
+  localStorage.setItem(KEY, v);
+  analyse(v);
+};
+document.getElementById('clear').onclick = ()=>{
+  document.getElementById('raw').value=''; ITEMS=[]; document.getElementById('out').innerHTML='';
+  localStorage.removeItem(KEY);
+};
+document.getElementById('demo').onclick = ()=>{
+  document.getElementById('raw').value = [
+    '【示例 · Python 收藏夹】',
+    '零基础 Python 入门教程（全套） https://www.bilibili.com/video/BV1xx411c7mD',
+    'https://www.bilibili.com/video/BV1xx411c7mD',
+    'Python 爬虫实战项目：手把手带你爬一个网站 https://www.bilibili.com/video/BV1ys411472E',
+    'Python 装饰器到底是怎么工作的？深入原理 https://www.bilibili.com/video/BV1Zx411c7Xy',
+    'Python 新手最常见的 10 个坑 https://zhihu.com/p/123456789',
+    'Python 面向对象编程 系列课程 P1 https://www.bilibili.com/video/BV1Ex411c7Qw',
+    'Python 面向对象编程 系列课程 P2 https://www.bilibili.com/video/BV1Kx411c7Zz',
+    'Python 数据结构与算法 从零到进阶 https://www.bilibili.com/video/BV1uW411P7hB'
+  ].join('\n');
+  document.getElementById('go').click();
+};
+
+const saved = localStorage.getItem(KEY);
+if(saved){ document.getElementById('raw').value = saved; analyse(saved); }
+</script>
+</body>
+</html>
